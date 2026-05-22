@@ -7,17 +7,16 @@ import {
   Image,
   TouchableOpacity,
   Platform,
-  Dimensions,
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn, FadeInUp, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/hooks/use-theme';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 
 const TIPS = [
   { label: 'No Tip', value: 0 },

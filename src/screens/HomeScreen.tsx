@@ -6,17 +6,16 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  TextInput,
   FlatList,
   Platform,
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn, FadeInDown, FadeInRight } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { useApp, Restaurant } from '@/context/AppContext';
+import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/hooks/use-theme';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 

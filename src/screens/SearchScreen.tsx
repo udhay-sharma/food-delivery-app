@@ -15,7 +15,7 @@ import Animated, { FadeIn, FadeInDown, Layout } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { useApp, Restaurant } from '@/context/AppContext';
+import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/hooks/use-theme';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
@@ -97,7 +97,7 @@ export default function SearchScreen() {
               <Ionicons name="search-outline" size={54} color={theme.textSecondary} />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>No Results Found</Text>
               <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-                We couldn't find matches for "{query}". Try checking your spelling.
+                {"We couldn't find matches for \"" + query + "\". Try checking your spelling."}
               </Text>
             </View>
           ) : (

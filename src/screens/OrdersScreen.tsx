@@ -3,14 +3,13 @@ import {
   StyleSheet,
   View,
   Text,
-  ScrollView,
   Image,
   TouchableOpacity,
   FlatList,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 
 import { useApp, Order, OrderStatus } from '@/context/AppContext';
@@ -69,7 +68,6 @@ export default function OrdersScreen() {
           {steps.map((step, idx) => {
             const isCompleted = idx <= currentIdx;
             const isActive = idx === currentIdx;
-            const color = isCompleted ? '#FF4B3A' : theme.textSecondary;
 
             return (
               <React.Fragment key={step.statusKey}>
@@ -226,7 +224,7 @@ export default function OrdersScreen() {
           </View>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>History is Empty</Text>
           <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-            You haven't ordered anything yet. Once a delivery reaches status "Delivered", it resides in history!
+            {"You haven't ordered anything yet. Once a delivery reaches status \"Delivered\", it resides in history!"}
           </Text>
         </View>
       ) : (

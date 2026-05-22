@@ -6,7 +6,7 @@ import Animated, { FadeIn, FadeInUp, Layout } from 'react-native-reanimated';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/hooks/use-theme';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const SLIDES = [
   {
