@@ -8,39 +8,118 @@ import {
   TouchableOpacity,
   Platform,
   Modal,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/hooks/use-theme';
 
-
-
 const TIPS = [
   { label: 'No Tip', value: 0 },
-  { label: '$2.00', value: 2 },
-  { label: '$3.00', value: 3 },
-  { label: '$5.00', value: 5 },
+  { label: '₹20', value: 20 },
+  { label: '₹30', value: 30 },
+  { label: '₹50', value: 50 },
+];
+
+const DELIVERY_INSTRUCTIONS = [
+  { id: 'no_ring', label: 'Avoid ringing bell', icon: '🔕' },
+  { id: 'gate', label: 'Leave at gate', icon: '🚪' },
+  { id: 'no_contact', label: 'No contact delivery', icon: '🛑' },
+  { id: 'call', label: 'Call before delivery', icon: '📞' },
 ];
 
 export default function CartScreen() {
   const navigation = useNavigation();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { cart, activeRestaurant, updateQuantity, removeFromCart, placeOrder } = useApp();
 
-  const [selectedTip, setSelectedTip] = useState(3);
+  const [selectedTip, setSelectedTip] = useState(30);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [placedOrderId, setPlacedOrderId] = useState('');
 
+  // Promo Code States
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+
+  // Delivery Instruction States
+  const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
+  const [customNotes, setCustomNotes] = useState('');
+
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryFee = activeRestaurant ? activeRestaurant.deliveryFee : 0;
-  const tax = subtotal * 0.08; // 8% sales tax
-  const total = subtotal + deliveryFee + tax + selectedTip;
+  const tax = subtotal * 0.08; // 8% GST & Restaurant Charges
+
+  // Promo Calculations
+  let discount = 0;
+  if (appliedPromo === 'BIRYANI50') {
+    if (subtotal >= 300) {
+      discount = 100;
+    }
+  } else if (appliedPromo === 'WELCOMEFEAST') {
+    discount = subtotal * 0.15;
+  }
+
+  const total = Math.max(0, subtotal + deliveryFee + tax + selectedTip - discount);
+
+  const handleApplyPromo = () => {
+    const code = promoCode.trim().toUpperCase();
+    if (!code) {
+      setPromoError('Please enter a promo code');
+      return;
+    }
+
+    if (code === 'BIRYANI50') {
+      if (subtotal < 300) {
+        setPromoError('Minimum order value for BIRYANI50 is ₹300');
+        setAppliedPromo(null);
+      } else {
+        setAppliedPromo('BIRYANI50');
+        setPromoError(null);
+      }
+    } else if (code === 'WELCOMEFEAST') {
+      setAppliedPromo('WELCOMEFEAST');
+      setPromoError(null);
+    } else {
+      setPromoError('Invalid promo code. Try BIRYANI50!');
+      setAppliedPromo(null);
+    }
+  };
+
+  const handleQuickApply = (code: string) => {
+    if (code === 'BIRYANI50') {
+      if (subtotal < 300) {
+        setPromoError('Minimum order value for BIRYANI50 is ₹300');
+        setAppliedPromo(null);
+      } else {
+        setAppliedPromo('BIRYANI50');
+        setPromoError(null);
+      }
+    } else if (code === 'WELCOMEFEAST') {
+      setAppliedPromo('WELCOMEFEAST');
+      setPromoError(null);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoCode('');
+    setPromoError(null);
+  };
+
+  const toggleInstruction = (id: string) => {
+    setSelectedInstructions((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
 
   const handleCheckout = () => {
-    const order = placeOrder(selectedTip);
+    const order = placeOrder(selectedTip, discount);
     if (order) {
       setPlacedOrderId(order.id);
       setSuccessModalVisible(true);
@@ -49,9 +128,20 @@ export default function CartScreen() {
 
   const handleTrackDelivery = () => {
     setSuccessModalVisible(false);
-    navigation.goBack(); // Close Cart modal
-    // Navigate to Orders Tab
-    (navigation as any).navigate('Orders');
+    // Reset navigation stack to Main bottom tabs with Orders tab active
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'Main',
+          state: {
+            routes: [
+              { name: 'Orders' }
+            ]
+          }
+        }
+      ]
+    } as any);
   };
 
   return (
@@ -66,22 +156,22 @@ export default function CartScreen() {
       </View>
 
       {cart.length === 0 ? (
-        /* Empty State */
         <View style={styles.emptyContainer}>
+          {/* Empty State */}
           <View style={styles.emptyIconCircle}>
             <Ionicons name="cart-outline" size={48} color={theme.textSecondary} />
           </View>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>Your Cart is Empty</Text>
           <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-            Go back to Burger Bistro or Pizzeria Bella Vita and add some delicious snacks to your cart!
+            Go back to Meghana Biryani Palace or CTR Shri Sagar and add some delicious local delicacies to your cart!
           </Text>
           <TouchableOpacity style={styles.browseBtn} onPress={() => navigation.goBack()} activeOpacity={0.85}>
             <Text style={styles.browseBtnText}>Browse Restaurants</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        /* Checkout Form Content */
         <View style={{ flex: 1 }}>
+          {/* Checkout Form Content */}
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             {/* Active Restaurant Callout */}
             {activeRestaurant && (
@@ -98,6 +188,21 @@ export default function CartScreen() {
               </View>
             )}
 
+            {/* Estimated Delivery Timeline Banner */}
+            <View style={[styles.etaBanner, { backgroundColor: theme.backgroundElement }]}>
+              <View style={[styles.etaIconCircle, { backgroundColor: 'rgba(255, 75, 58, 0.1)' }]}>
+                <Ionicons name="time" size={20} color="#FF4B3A" />
+              </View>
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text style={[styles.etaText, { color: theme.text }]}>
+                  Delivering in <Text style={{ fontWeight: '800', color: '#FF4B3A' }}>25-35 mins</Text>
+                </Text>
+                <Text style={[styles.etaLocationText, { color: theme.textSecondary }]}>
+                  to Koramangala, Bangalore
+                </Text>
+              </View>
+            </View>
+
             {/* Cart Items List */}
             <View style={styles.itemsSection}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Items Review</Text>
@@ -113,7 +218,7 @@ export default function CartScreen() {
                     <Text style={[styles.itemName, { color: theme.text }]} numberOfLines={1}>
                       {item.name}
                     </Text>
-                    <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
+                    <Text style={styles.itemPrice}>₹{item.price}</Text>
                   </View>
 
                   {/* Quantity adjustments counter */}
@@ -147,6 +252,138 @@ export default function CartScreen() {
                   </TouchableOpacity>
                 </Animated.View>
               ))}
+            </View>
+
+            {/* Promo Coupon Section */}
+            <View style={styles.promoSection}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Apply Promo Code</Text>
+              <View style={styles.promoInputRow}>
+                <TextInput
+                  style={[
+                    styles.promoInput,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      color: theme.text,
+                      borderColor: promoError ? '#FF3B30' : appliedPromo ? '#4CD964' : theme.backgroundElement,
+                    },
+                  ]}
+                  placeholder="Enter coupon (e.g. BIRYANI50)"
+                  placeholderTextColor={theme.textSecondary}
+                  value={promoCode}
+                  onChangeText={(text) => {
+                    setPromoCode(text);
+                    if (promoError) setPromoError(null);
+                  }}
+                  autoCapitalize="characters"
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.promoApplyBtn,
+                    { backgroundColor: appliedPromo ? '#4CD964' : '#FF4B3A' },
+                  ]}
+                  onPress={handleApplyPromo}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.promoApplyText}>{appliedPromo ? 'Applied' : 'Apply'}</Text>
+                </TouchableOpacity>
+              </View>
+              {promoError && <Text style={styles.promoErrorText}>{promoError}</Text>}
+              {appliedPromo && (
+                <View style={[styles.promoSuccessRow, { backgroundColor: theme.background === '#ffffff' ? '#EBFBEE' : 'rgba(76, 217, 100, 0.1)' }]}>
+                  <Ionicons name="checkmark-circle" size={16} color="#4CD964" />
+                  <Text style={[styles.promoSuccessText, { color: theme.text }]}>
+                    Code <Text style={{ fontWeight: '700' }}>{appliedPromo}</Text> applied! Saved <Text style={{ fontWeight: '800', color: '#4CD964' }}>₹{discount.toFixed(0)}</Text>
+                  </Text>
+                  <TouchableOpacity onPress={handleRemovePromo} style={{ marginLeft: 'auto' }}>
+                    <Text style={{ color: '#FF3B30', fontWeight: '700', fontSize: 12 }}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {/* Quick Tap Coupon Suggestion Chips */}
+              <View style={styles.couponChipsRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.couponChip,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: appliedPromo === 'BIRYANI50' ? '#FF4B3A' : 'transparent',
+                    },
+                  ]}
+                  onPress={() => {
+                    setPromoCode('BIRYANI50');
+                    handleQuickApply('BIRYANI50');
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.couponChipTitle, { color: theme.text }]}>BIRYANI50</Text>
+                  <Text style={[styles.couponChipDesc, { color: theme.textSecondary }]}>₹100 Off (Min ₹300)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.couponChip,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: appliedPromo === 'WELCOMEFEAST' ? '#FF4B3A' : 'transparent',
+                    },
+                  ]}
+                  onPress={() => {
+                    setPromoCode('WELCOMEFEAST');
+                    handleQuickApply('WELCOMEFEAST');
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.couponChipTitle, { color: theme.text }]}>WELCOMEFEAST</Text>
+                  <Text style={[styles.couponChipDesc, { color: theme.textSecondary }]}>15% Off (No Min)</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Delivery Instructions Section */}
+            <View style={styles.instructionsSection}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Delivery Instructions</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.instructionChipsRow}>
+                {DELIVERY_INSTRUCTIONS.map((instruction) => {
+                  const isSelected = selectedInstructions.includes(instruction.id);
+                  return (
+                    <TouchableOpacity
+                      key={instruction.id}
+                      style={[
+                        styles.instructionChip,
+                        {
+                          backgroundColor: isSelected ? '#FF4B3A' : theme.backgroundElement,
+                          borderColor: isSelected ? '#FF4B3A' : 'transparent',
+                        },
+                      ]}
+                      onPress={() => toggleInstruction(instruction.id)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.instructionChipIcon, { marginRight: 6 }]}>{instruction.icon}</Text>
+                      <Text
+                        style={[
+                          styles.instructionChipText,
+                          { color: isSelected ? '#FFF' : theme.text },
+                        ]}
+                      >
+                        {instruction.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              
+              {/* Custom Note input */}
+              <View style={[styles.notesContainer, { backgroundColor: theme.backgroundElement }]}>
+                <Ionicons name="document-text-outline" size={18} color={theme.textSecondary} style={{ marginRight: 10, marginTop: Platform.OS === 'ios' ? 2 : 4 }} />
+                <TextInput
+                  style={[styles.notesInput, { color: theme.text }]}
+                  placeholder="Add note for delivery partner (e.g. Leave with guard...)"
+                  placeholderTextColor={theme.textSecondary}
+                  value={customNotes}
+                  onChangeText={setCustomNotes}
+                  multiline
+                  numberOfLines={2}
+                />
+              </View>
             </View>
 
             {/* Driver Tip Picker Selector */}
@@ -186,23 +423,30 @@ export default function CartScreen() {
               
               <View style={styles.receiptRow}>
                 <Text style={[styles.receiptLabel, { color: theme.textSecondary }]}>Basket Subtotal</Text>
-                <Text style={[styles.receiptValue, { color: theme.text }]}>${subtotal.toFixed(2)}</Text>
+                <Text style={[styles.receiptValue, { color: theme.text }]}>₹{subtotal.toFixed(0)}</Text>
               </View>
 
               <View style={styles.receiptRow}>
                 <Text style={[styles.receiptLabel, { color: theme.textSecondary }]}>Delivery Fee</Text>
-                <Text style={[styles.receiptValue, { color: theme.text }]}>${deliveryFee.toFixed(2)}</Text>
+                <Text style={[styles.receiptValue, { color: theme.text }]}>₹{deliveryFee.toFixed(0)}</Text>
               </View>
 
               <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: theme.textSecondary }]}>Sales Tax & Service (8%)</Text>
-                <Text style={[styles.receiptValue, { color: theme.text }]}>${tax.toFixed(2)}</Text>
+                <Text style={[styles.receiptLabel, { color: theme.textSecondary }]}>GST & Restaurant Charges (8%)</Text>
+                <Text style={[styles.receiptValue, { color: theme.text }]}>₹{tax.toFixed(0)}</Text>
               </View>
 
               {selectedTip > 0 && (
                 <View style={styles.receiptRow}>
                   <Text style={[styles.receiptLabel, { color: theme.textSecondary }]}>Driver Gratuity</Text>
-                  <Text style={[styles.receiptValue, { color: '#4CD964' }]}>+${selectedTip.toFixed(2)}</Text>
+                  <Text style={[styles.receiptValue, { color: '#4CD964' }]}>+₹{selectedTip.toFixed(0)}</Text>
+                </View>
+              )}
+
+              {discount > 0 && (
+                <View style={styles.receiptRow}>
+                  <Text style={[styles.receiptLabel, { color: '#4CD964' }]}>Promo Discount ({appliedPromo})</Text>
+                  <Text style={[styles.receiptValue, { color: '#4CD964' }]}>-₹{discount.toFixed(0)}</Text>
                 </View>
               )}
 
@@ -210,17 +454,17 @@ export default function CartScreen() {
 
               <View style={styles.totalRow}>
                 <Text style={[styles.totalLabel, { color: theme.text }]}>Total Billing</Text>
-                <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>₹{total.toFixed(0)}</Text>
               </View>
             </View>
           </ScrollView>
 
           {/* Place Order Sticky Bottom Action */}
-          <View style={[styles.footer, { borderTopColor: theme.backgroundElement }]}>
+          <View style={[styles.footer, { borderTopColor: theme.backgroundElement, paddingBottom: Math.max(24, insets.bottom) }]}>
             <TouchableOpacity style={styles.checkoutBtn} onPress={handleCheckout} activeOpacity={0.85}>
               <Text style={styles.checkoutBtnText}>Place Delivery Order</Text>
               <View style={styles.checkoutPriceBadge}>
-                <Text style={styles.checkoutPriceText}>${total.toFixed(2)}</Text>
+                <Text style={styles.checkoutPriceText}>₹{total.toFixed(0)}</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -240,7 +484,7 @@ export default function CartScreen() {
               Your receipt has been authorized. Order ID: <Text style={{ fontWeight: '700', color: '#FF4B3A' }}>{placedOrderId}</Text>
             </Text>
             <Text style={[styles.modalParagraph, { color: theme.textSecondary }]}>
-              Burger Bistro has received your ticket and is preparing flame-grilled dishes. Track it live on the Orders screen!
+              {activeRestaurant ? activeRestaurant.name : 'The restaurant'} has received your ticket and is preparing fresh local dishes. Track it live on the Orders screen!
             </Text>
 
             <TouchableOpacity style={styles.trackBtn} onPress={handleTrackDelivery} activeOpacity={0.85}>
@@ -573,5 +817,137 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  etaBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 24,
+  },
+  etaIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  etaText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  etaLocationText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  promoSection: {
+    marginBottom: 24,
+  },
+  promoInputRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  promoInput: {
+    flex: 1,
+    height: 52,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    fontSize: 14,
+    fontWeight: '600',
+    borderWidth: 1.5,
+  },
+  promoApplyBtn: {
+    height: 52,
+    paddingHorizontal: 22,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  promoApplyText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  promoErrorText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 6,
+    marginLeft: 4,
+  },
+  promoSuccessRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginTop: 12,
+    gap: 6,
+  },
+  promoSuccessText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  couponChipsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  couponChip: {
+    flex: 1,
+    borderRadius: 14,
+    padding: 10,
+    alignItems: 'center',
+    borderWidth: 1.5,
+  },
+  couponChipTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  couponChipDesc: {
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  instructionsSection: {
+    marginBottom: 24,
+  },
+  instructionChipsRow: {
+    gap: 8,
+    paddingRight: 10,
+    paddingBottom: 4,
+  },
+  instructionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 40,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+  },
+  instructionChipIcon: {
+    fontSize: 14,
+  },
+  instructionChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  notesContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 12,
+  },
+  notesInput: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    height: 48,
+    textAlignVertical: 'top',
+    padding: 0,
   },
 });

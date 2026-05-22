@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,24 +8,34 @@ import {
   ScrollView,
   Image,
   FlatList,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown, Layout } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/hooks/use-theme';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
 const SEARCH_CATEGORIES = [
-  { id: '1', name: 'Fast Food', gradient: ['#FF5E36', '#FF8F3D'], icon: 'hamburger' },
-  { id: '2', name: 'Salads & Healthy', gradient: ['#4CD964', '#5AD8A6'], icon: 'leaf' },
-  { id: '3', name: 'Pizza & Pasta', gradient: ['#FF9500', '#FFCC00'], icon: 'pizza' },
-  { id: '4', name: 'Asian Cuisines', gradient: ['#5856D6', '#8E8E93'], icon: 'restaurant' },
-  { id: '5', name: 'Sweet Bakery', gradient: ['#FF2D55', '#FF5B7F'], icon: 'ice-cream' },
-  { id: '6', name: 'Coffee & Drinks', gradient: ['#007AFF', '#05A2FF'], icon: 'cafe' },
+  { id: '1', name: 'Hyderabadi Biryani', gradient: ['#FF5E36', '#FF8F3D'], icon: 'flame', searchKey: 'Biryani' },
+  { id: '2', name: 'South Indian Dosa', gradient: ['#4CD964', '#5AD8A6'], icon: 'restaurant', searchKey: 'Dosa' },
+  { id: '3', name: 'North Indian Curry', gradient: ['#FF9500', '#FFCC00'], icon: 'leaf', searchKey: 'North Indian' },
+  { id: '4', name: 'Spicy Kebab Rolls', gradient: ['#5856D6', '#8E8E93'], icon: 'egg', searchKey: 'Roll' },
+  { id: '5', name: 'Sweet Sundaes', gradient: ['#FF2D55', '#FF5B7F'], icon: 'ice-cream', searchKey: 'Sundae' },
+  { id: '6', name: 'Chilled Mango Shakes', gradient: ['#007AFF', '#05A2FF'], icon: 'cafe', searchKey: 'Shake' },
+];
+
+const TRENDING_SEARCHES = [
+  'Chicken Biryani',
+  'CTR Masala Dosa',
+  'Butter Chicken',
+  'Kebab',
+  'Paneer Tikka',
+  'Filter Coffee',
 ];
 
 type SearchScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
@@ -34,16 +44,75 @@ export default function SearchScreen() {
   const { restaurants } = useApp();
   const theme = useTheme();
   const navigation = useNavigation<SearchScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
 
   const [query, setQuery] = useState('');
-  const [recentSearches, setRecentSearches] = useState(['Double Cheese', 'Truffle Fries', 'Pizzeria']);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  // Load recent searches from AsyncStorage on mount
+  useEffect(() => {
+    const loadRecentSearches = async () => {
+      try {
+        const storedSearches = await AsyncStorage.getItem('@recent_searches');
+        if (storedSearches) {
+          setRecentSearches(JSON.parse(storedSearches));
+        }
+      } catch (error) {
+        console.error('Failed to load recent searches:', error);
+      }
+    };
+    loadRecentSearches();
+  }, []);
+
+  // Save a search term to history
+  const saveSearchTerm = async (term: string) => {
+    const trimmed = term.trim();
+    if (trimmed === '') return;
+
+    const updated = [trimmed, ...recentSearches.filter((s) => s.toLowerCase() !== trimmed.toLowerCase())].slice(0, 8);
+    setRecentSearches(updated);
+    try {
+      await AsyncStorage.setItem('@recent_searches', JSON.stringify(updated));
+    } catch (error) {
+      console.error('Failed to save recent searches:', error);
+    }
+  };
+
+  const handleSearchSubmit = () => {
+    saveSearchTerm(query);
+  };
+
+  const handleCardPress = (restaurantId: string, restaurantName?: string, restaurantPrice?: number) => {
+    saveSearchTerm(query);
+    navigation.navigate('RestaurantDetail', { restaurantId, restaurantName, restaurantPrice });
+  };
 
   // Clear query button action
   const clearQuery = () => setQuery('');
 
   // Handle selecting a category
-  const handleCategoryPress = (categoryName: string) => {
-    setQuery(categoryName);
+  const handleCategoryPress = (searchKey: string) => {
+    setQuery(searchKey);
+    saveSearchTerm(searchKey);
+  };
+
+  const handleDeleteRecent = async (search: string) => {
+    const updated = recentSearches.filter((s) => s !== search);
+    setRecentSearches(updated);
+    try {
+      await AsyncStorage.setItem('@recent_searches', JSON.stringify(updated));
+    } catch (error) {
+      console.error('Failed to delete recent search:', error);
+    }
+  };
+
+  const handleClearAllRecent = async () => {
+    setRecentSearches([]);
+    try {
+      await AsyncStorage.removeItem('@recent_searches');
+    } catch (error) {
+      console.error('Failed to clear all recent searches:', error);
+    }
   };
 
   // Live filter restaurants and dishes
@@ -59,12 +128,8 @@ export default function SearchScreen() {
         return matchesName || matchesCuisine || matchesMenu;
       });
 
-  const handleDeleteRecent = (search: string) => {
-    setRecentSearches(prev => prev.filter(s => s !== search));
-  };
-
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
       {/* Search Header Input bar */}
       <View style={styles.header}>
         <View style={[styles.searchContainer, { backgroundColor: theme.backgroundElement }]}>
@@ -75,7 +140,9 @@ export default function SearchScreen() {
             placeholderTextColor={theme.textSecondary}
             value={query}
             onChangeText={setQuery}
+            onSubmitEditing={handleSearchSubmit}
             autoCorrect={false}
+            returnKeyType="search"
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={clearQuery} style={styles.clearBtn} activeOpacity={0.7}>
@@ -86,8 +153,8 @@ export default function SearchScreen() {
       </View>
 
       {query.length > 0 ? (
-        /* Results Section */
         <View style={styles.resultsContainer}>
+          {/* Results Section */}
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
             Search Results ({matchingRestaurants.length})
           </Text>
@@ -105,55 +172,109 @@ export default function SearchScreen() {
               data={matchingRestaurants}
               keyExtractor={(item) => item.id}
               showsVerticalScrollIndicator={false}
-              renderItem={({ item, index }) => (
-                <Animated.View entering={FadeInDown.duration(400).delay(index * 60)}>
-                  <TouchableOpacity
-                    style={[styles.resultCard, { backgroundColor: theme.background === '#ffffff' ? '#FFF' : theme.backgroundElement }]}
-                    activeOpacity={0.9}
-                    onPress={() => navigation.navigate('RestaurantDetail', { restaurantId: item.id })}
-                  >
-                    <Image source={{ uri: item.image }} style={styles.resultImage} />
-                    <View style={styles.resultDetails}>
-                      <Text style={[styles.resultName, { color: theme.text }]}>{item.name}</Text>
-                      <Text style={[styles.resultCuisine, { color: theme.textSecondary }]}>{item.cuisine}</Text>
-                      
-                      <View style={styles.resultMeta}>
-                        <View style={styles.metaBadge}>
-                          <Ionicons name="star" size={12} color="#FFB03B" />
-                          <Text style={[styles.metaText, { color: theme.text }]}>{item.rating}</Text>
+              contentContainerStyle={{ paddingBottom: 110 }}
+              renderItem={({ item, index }) => {
+                // Find if there is a menu item that matches the query for visual feedback
+                const matchingFoodItem = item.menu.find(
+                  (food) =>
+                    food.name.toLowerCase().includes(query.toLowerCase()) ||
+                    food.description.toLowerCase().includes(query.toLowerCase())
+                );
+
+                return (
+                  <Animated.View entering={FadeInDown.duration(400).delay(index * 60)}>
+                    <TouchableOpacity
+                      style={[
+                        styles.resultCard,
+                        {
+                          backgroundColor:
+                            theme.background === '#ffffff' ? '#FFF' : theme.backgroundElement,
+                        },
+                      ]}
+                      activeOpacity={0.9}
+                      onPress={() => handleCardPress(item.id, item.name, item.menu[0]?.price)}
+                    >
+                      <Image source={{ uri: item.image }} style={styles.resultImage} />
+                      <View style={styles.resultDetails}>
+                        <View style={styles.resultRow}>
+                          <Text style={[styles.resultName, { color: theme.text }]}>{item.name}</Text>
+                          <View style={styles.metaBadge}>
+                            <Ionicons name="star" size={12} color="#FFB03B" />
+                            <Text style={[styles.metaText, { color: theme.text }]}>{item.rating}</Text>
+                          </View>
                         </View>
-                        <Text style={[styles.metaTime, { color: theme.textSecondary }]}>{item.deliveryTime}</Text>
-                        <Text style={[styles.metaFee, { color: theme.textSecondary }]}>${item.deliveryFee} Del.</Text>
+                        <Text style={[styles.resultCuisine, { color: theme.textSecondary }]}>
+                          {item.cuisine}
+                        </Text>
+
+                        <View style={styles.resultMeta}>
+                          <Text style={[styles.metaTime, { color: theme.textSecondary }]}>
+                            {item.deliveryTime}
+                          </Text>
+                          <View style={styles.dotSeparator} />
+                          <Text style={[styles.metaFee, { color: theme.textSecondary }]}>
+                            ₹{item.deliveryFee} delivery
+                          </Text>
+                        </View>
+
+                        {matchingFoodItem && (
+                          <View
+                            style={[
+                              styles.matchingFoodBadge,
+                              { backgroundColor: theme.backgroundElement },
+                            ]}
+                          >
+                            <Ionicons name="restaurant-outline" size={12} color="#FF4B3A" />
+                            <Text
+                              style={[styles.matchingFoodText, { color: theme.textSecondary }]}
+                              numberOfLines={1}
+                            >
+                              Includes:{' '}
+                              <Text style={{ fontWeight: '800', color: theme.text }}>
+                                {matchingFoodItem.name}
+                              </Text>{' '}
+                              (₹{matchingFoodItem.price})
+                            </Text>
+                          </View>
+                        )}
                       </View>
-                    </View>
-                  </TouchableOpacity>
-                </Animated.View>
-              )}
+                    </TouchableOpacity>
+                  </Animated.View>
+                );
+              }}
             />
           )}
         </View>
       ) : (
-        /* Discover Screen Standard View */
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.discoverScroll}>
+          {/* Discover Screen Standard View */}
           {/* Recent Searches */}
           {recentSearches.length > 0 && (
             <View style={styles.recentContainer}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Searches</Text>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Searches</Text>
+                <TouchableOpacity onPress={handleClearAllRecent}>
+                  <Text style={styles.clearAllText}>Clear All</Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.recentTagsContainer}>
                 {recentSearches.map((search, idx) => (
-                  <Animated.View 
-                    key={`search-${idx}`} 
+                  <Animated.View
+                    key={`search-${idx}`}
                     entering={FadeIn.delay(idx * 50)}
                     layout={Layout.springify()}
                   >
                     <TouchableOpacity
                       style={[styles.recentTag, { backgroundColor: theme.backgroundElement }]}
                       activeOpacity={0.7}
-                      onPress={() => setQuery(search)}
+                      onPress={() => handleCategoryPress(search)}
                     >
                       <Ionicons name="time-outline" size={14} color={theme.textSecondary} />
                       <Text style={[styles.recentTagText, { color: theme.text }]}>{search}</Text>
-                      <TouchableOpacity onPress={() => handleDeleteRecent(search)} style={styles.recentDeleteBtn}>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteRecent(search)}
+                        style={styles.recentDeleteBtn}
+                      >
                         <Ionicons name="close" size={14} color={theme.textSecondary} />
                       </TouchableOpacity>
                     </TouchableOpacity>
@@ -163,9 +284,34 @@ export default function SearchScreen() {
             </View>
           )}
 
+          {/* Trending Searches */}
+          <View style={styles.trendingContainer}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Trending Searches</Text>
+            <View style={styles.trendingTagsContainer}>
+              {TRENDING_SEARCHES.map((item, idx) => (
+                <TouchableOpacity
+                  key={`trending-${idx}`}
+                  style={[
+                    styles.trendingTag,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: theme.border,
+                      borderWidth: 1,
+                    },
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => handleCategoryPress(item)}
+                >
+                  <Ionicons name="trending-up-outline" size={14} color="#FF4B3A" />
+                  <Text style={[styles.trendingTagText, { color: theme.text }]}>{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
           {/* Categories Grid Selector */}
           <View style={styles.gridSection}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Browse Food Types</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Browse Cuisines</Text>
             <View style={styles.gridContainer}>
               {SEARCH_CATEGORIES.map((item, idx) => (
                 <Animated.View
@@ -176,7 +322,7 @@ export default function SearchScreen() {
                   <TouchableOpacity
                     style={[styles.gridCard, { backgroundColor: item.gradient[0] }]}
                     activeOpacity={0.85}
-                    onPress={() => handleCategoryPress(item.name.split(' ')[0])}
+                    onPress={() => handleCategoryPress(item.searchKey)}
                   >
                     <View style={styles.gridIconCircle}>
                       <Ionicons name={item.icon as any} size={22} color={item.gradient[0]} />
@@ -196,7 +342,6 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   header: {
     paddingHorizontal: 24,
@@ -223,10 +368,21 @@ const styles = StyleSheet.create({
   },
   discoverScroll: {
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   recentContainer: {
     marginBottom: 24,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  clearAllText: {
+    color: '#FF4B3A',
+    fontSize: 13,
+    fontWeight: '700',
   },
   sectionTitle: {
     fontSize: 18,
@@ -255,6 +411,26 @@ const styles = StyleSheet.create({
   recentDeleteBtn: {
     padding: 2,
     marginLeft: 4,
+  },
+  trendingContainer: {
+    marginBottom: 24,
+  },
+  trendingTagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  trendingTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 6,
+  },
+  trendingTagText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   gridSection: {
     marginTop: 8,
@@ -301,7 +477,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     marginBottom: 16,
-    padding: 10,
+    padding: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.04,
@@ -309,8 +485,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   resultImage: {
-    width: 80,
-    height: 80,
+    width: 90,
+    height: 90,
     borderRadius: 14,
   },
   resultDetails: {
@@ -318,10 +494,17 @@ const styles = StyleSheet.create({
     marginLeft: 14,
     justifyContent: 'center',
   },
+  resultRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   resultName: {
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: -0.2,
+    flex: 1,
+    marginRight: 6,
   },
   resultCuisine: {
     fontSize: 12,
@@ -332,7 +515,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 6,
-    gap: 10,
+  },
+  dotSeparator: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#8E8E93',
+    marginHorizontal: 6,
   },
   metaBadge: {
     flexDirection: 'row',
@@ -350,6 +539,20 @@ const styles = StyleSheet.create({
   metaFee: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  matchingFoodBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 8,
+    gap: 6,
+  },
+  matchingFoodText: {
+    fontSize: 11,
+    fontWeight: '500',
+    flex: 1,
   },
   emptyResults: {
     flex: 0.8,

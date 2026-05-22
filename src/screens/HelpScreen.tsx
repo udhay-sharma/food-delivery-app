@@ -6,10 +6,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 
 import { useTheme } from '@/hooks/use-theme';
@@ -35,7 +33,6 @@ const FAQS: FAQItem[] = [
 ];
 
 export default function HelpScreen() {
-  const navigation = useNavigation();
   const theme = useTheme();
 
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
@@ -46,15 +43,6 @@ export default function HelpScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.backgroundElement }]}>
-        <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.backgroundElement }]} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Help & Support</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Support Staff Banner */}
         <Animated.View entering={FadeInDown.duration(500)} style={[styles.staffCard, { backgroundColor: theme.backgroundElement }]}>
@@ -144,7 +132,6 @@ export default function HelpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   header: {
     flexDirection: 'row',
@@ -168,7 +155,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 24,
     paddingTop: 20,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   staffCard: {
     borderRadius: 24,

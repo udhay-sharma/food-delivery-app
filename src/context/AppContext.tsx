@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Interfaces for our data models
 export interface FoodItem {
@@ -52,6 +53,7 @@ interface AppContextType {
   orders: Order[];
   isOnboarded: boolean;
   isLoggedIn: boolean;
+  isLoading: boolean;
   userProfile: {
     name: string;
     email: string;
@@ -59,158 +61,163 @@ interface AppContextType {
     level: string;
     points: number;
     balance: number;
+    memberSince: string;
+    favCuisine: string;
+    totalOrders: number;
+    savedAddresses: number;
   };
   addToCart: (item: FoodItem, restaurant: Restaurant) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, delta: number) => void;
   clearCart: () => void;
-  placeOrder: (tipAmount: number) => Order | null;
+  placeOrder: (tipAmount: number, discountAmount?: number) => Order | null;
   completeOnboarding: () => void;
   login: () => void;
   logout: () => void;
+  updateProfile: (name: string, email: string, favCuisine: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// High-quality dummy data
+// High-quality dummy data localized for India (Bangalore)
 const DUMMY_RESTAURANTS: Restaurant[] = [
   {
     id: 'rest-1',
-    name: 'Burger Bistro & Co.',
-    cuisine: 'Burgers & Fries',
+    name: 'Meghana Biryani Palace',
+    cuisine: 'Biryani, North Indian',
     rating: 4.8,
-    reviewsCount: 1240,
-    deliveryTime: '15-25 min',
-    deliveryFee: 1.99,
-    image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&auto=format&fit=crop&q=80',
-    promo: 'Free Delivery on $15+',
+    reviewsCount: 2480,
+    deliveryTime: '25-35 min',
+    deliveryFee: 39,
+    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600&auto=format&fit=crop&q=80',
+    promo: 'Flat ₹100 Off with BIRYANI50',
     menu: [
       {
         id: 'food-1-1',
-        name: 'The Antigravity Stack',
-        price: 14.99,
-        description: 'Double flame-grilled Angus beef, melted cheddar, crisp lettuce, heirloom tomato, and our secret antigravity truffle glaze on a brioche bun.',
-        image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&auto=format&fit=crop&q=60',
+        name: 'Meghana Chicken Biryani',
+        price: 329,
+        description: 'Our signature basmati rice biryani cooked with succulent tender chicken chunks, rich spices, and served with spicy raita.',
+        image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&auto=format&fit=crop&q=60',
         category: 'Popular',
       },
       {
         id: 'food-1-2',
-        name: 'Crispy Truffle Fries',
-        price: 5.49,
-        description: 'Golden, hand-cut Idaho potatoes tossed in white truffle oil, grated parmesan, and fresh chopped parsley.',
-        image: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=400&auto=format&fit=crop&q=60',
-        category: 'Sides',
+        name: 'Paneer Tikka Biryani',
+        price: 289,
+        description: 'Fragrant long-grain basmati rice layered with soft chargrilled paneer cubes, saffron, and house biryani spices.',
+        image: 'https://images.unsplash.com/photo-1633945274405-b6c8069047b0?w=400&auto=format&fit=crop&q=60',
+        category: 'Biryani',
       },
       {
         id: 'food-1-3',
-        name: 'Smoky Bacon Avocado Burger',
-        price: 15.99,
-        description: 'Single Angus patty, applewood smoked bacon, fresh Hass avocado, chipotle aioli, and pepper jack cheese.',
-        image: 'https://images.unsplash.com/photo-1553979459-d2229ba7433b?w=400&auto=format&fit=crop&q=60',
-        category: 'Burgers',
+        name: 'Empire Chicken Kebab (6 Pcs)',
+        price: 219,
+        description: 'Deep-fried crispy, spicy chicken pieces marinated in local spices and served with fresh lemon slices and onions.',
+        image: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?w=400&auto=format&fit=crop&q=60',
+        category: 'Starters',
       },
     ],
   },
   {
     id: 'rest-2',
-    name: 'Pizzeria Bella Vita',
-    cuisine: 'Italian & Pizza',
+    name: 'CTR Shri Sagar',
+    cuisine: 'South Indian, Dosa',
     rating: 4.9,
-    reviewsCount: 980,
-    deliveryTime: '20-30 min',
-    deliveryFee: 2.49,
-    image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80',
-    promo: 'Buy 1 Get 1 Margerita',
+    reviewsCount: 3120,
+    deliveryTime: '15-20 min',
+    deliveryFee: 29,
+    image: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=600&auto=format&fit=crop&q=80',
+    promo: '₹40 Off on Orders above ₹199',
     menu: [
       {
         id: 'food-2-1',
-        name: 'Burrata & Prosciutto Pizza',
-        price: 18.99,
-        description: 'San Marzano tomato sauce, fresh creamy burrata ball, thin-sliced Prosciutto di Parma, arugula, and balsamic reduction drizzle.',
-        image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&auto=format&fit=crop&q=60',
+        name: 'CTR Benne Masala Dosa',
+        price: 110,
+        description: 'Crispy golden brown rice crepe enriched with generous dollops of local butter, spiced potato mash, and fresh coconut chutney.',
+        image: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=400&auto=format&fit=crop&q=60',
         category: 'Popular',
       },
       {
         id: 'food-2-2',
-        name: 'Spicy Diavola Pizza',
-        price: 16.49,
-        description: 'Spicy calabrian salami, fresh mozzarella, house-infused chili honey, and shredded basil.',
-        image: 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=400&auto=format&fit=crop&q=60',
-        category: 'Pizza',
+        name: 'Idli Vada Combo',
+        price: 80,
+        description: 'Two soft, fluffy steamed rice cakes (idli) paired with a crispy, savory lentil donut (vada) served with sambar.',
+        image: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=400&auto=format&fit=crop&q=60',
+        category: 'South Indian',
       },
       {
         id: 'food-2-3',
-        name: 'Classic Garlic Knots',
-        price: 6.99,
-        description: 'Fresh baked dough knots drenched in garlic butter, romano cheese, served with marinara dipping sauce.',
-        image: 'https://images.unsplash.com/photo-1544982503-9f984c14501a?w=400&auto=format&fit=crop&q=60',
-        category: 'Sides',
+        name: 'Traditional Filter Coffee',
+        price: 45,
+        description: 'Iconic hot brew made by mixing frothed, chicory-infused milk with traditional drip-decoction.',
+        image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&auto=format&fit=crop&q=60',
+        category: 'Drinks',
       },
     ],
   },
   {
     id: 'rest-3',
-    name: 'Sushi Zen Garden',
-    cuisine: 'Japanese & Sushi',
+    name: 'Empire Restaurant & Grill',
+    cuisine: 'North Indian, Rolls',
     rating: 4.7,
-    reviewsCount: 650,
-    deliveryTime: '25-35 min',
-    deliveryFee: 3.49,
-    image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&auto=format&fit=crop&q=80',
-    promo: '15% Off Your First Order',
+    reviewsCount: 1940,
+    deliveryTime: '20-30 min',
+    deliveryFee: 39,
+    image: 'https://images.unsplash.com/photo-1626132647523-66f5bf380027?w=600&auto=format&fit=crop&q=80',
+    promo: 'Buy 1 Get 1 on Chicken Rolls',
     menu: [
       {
         id: 'food-3-1',
-        name: 'Golden Dragon Roll',
-        price: 16.99,
-        description: 'Shrimp tempura and cucumber topped with spicy tuna, thin avocado slices, sweet unagi sauce, and microgreens.',
-        image: 'https://images.unsplash.com/photo-1611143669185-af224c5e3252?w=400&auto=format&fit=crop&q=60',
-        category: 'Signature Rolls',
+        name: 'Double Chicken Double Egg Roll',
+        price: 189,
+        description: 'Soft layered paratha wrapped with double flame-grilled chicken, egg omelette, chopped onions, and chatpata mint chutney.',
+        image: 'https://images.unsplash.com/photo-1626132647523-66f5bf380027?w=400&auto=format&fit=crop&q=60',
+        category: 'Popular',
       },
       {
         id: 'food-3-2',
-        name: 'Premium Omakase Set',
-        price: 29.99,
-        description: '8 pieces of chef-selected nigiri sushi (Bluefin Tuna, Salmon Belly, Yellowtail, Sweet Shrimp) and 1 spicy tuna roll.',
-        image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&auto=format&fit=crop&q=60',
-        category: 'Sushi Sets',
+        name: 'Paneer Tikka Roll',
+        price: 159,
+        description: 'Grilled tandoori paneer wrapped in flatbread with green peppers, onions, and house mayonnaise.',
+        image: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=400&auto=format&fit=crop&q=60',
+        category: 'Rolls',
       },
       {
         id: 'food-3-3',
-        name: 'Edamame with Sea Salt',
-        price: 4.99,
-        description: 'Steamed young soybeans sprinkled with coarse Maldon sea salt.',
-        image: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=400&auto=format&fit=crop&q=60',
-        category: 'Sides',
+        name: 'Butter Chicken Masala',
+        price: 349,
+        description: 'Rich, creamy, buttery gravy with tandoori grilled chicken chunks tossed in tomato and cashew sauce.',
+        image: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=400&auto=format&fit=crop&q=60',
+        category: 'North Indian',
       },
     ],
   },
   {
     id: 'rest-4',
-    name: 'Sweet Harmony Desserts',
-    cuisine: 'Desserts & Bakery',
+    name: 'Corner House Ice Creams',
+    cuisine: 'Desserts & Shakes',
     rating: 4.9,
-    reviewsCount: 820,
+    reviewsCount: 4150,
     deliveryTime: '10-20 min',
-    deliveryFee: 1.49,
-    image: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=600&auto=format&fit=crop&q=80',
-    promo: 'Free Cookie on Orders $10+',
+    deliveryFee: 19,
+    image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=600&auto=format&fit=crop&q=80',
+    promo: 'Free Cookie on Orders ₹250+',
     menu: [
       {
         id: 'food-4-1',
-        name: 'Molten Lava Cake',
-        price: 8.99,
-        description: 'Decadent dark chocolate cake with a rich liquid center, served with a scoop of premium Madagascar vanilla bean ice cream.',
+        name: 'Death by Chocolate Sundae',
+        price: 249,
+        description: 'Legendary sundae featuring layers of warm chocolate cake, vanilla ice cream, hot chocolate fudge, and roasted peanuts.',
         image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=400&auto=format&fit=crop&q=60',
-        category: 'Desserts',
+        category: 'Popular',
       },
       {
         id: 'food-4-2',
-        name: 'Matcha Strawberry Crepe',
-        price: 9.49,
-        description: 'Warm, thin crepe filled with high-grade Japanese matcha pastry cream, fresh sliced strawberries, and fresh whipped cream.',
-        image: 'https://images.unsplash.com/photo-1519676867240-f03562e64548?w=400&auto=format&fit=crop&q=60',
-        category: 'Crepes',
+        name: 'Thick Mango Shake',
+        price: 179,
+        description: 'Rich mango pulp blended with premium vanilla cream, chilled milk, topped with mango chunks.',
+        image: 'https://images.unsplash.com/photo-1579954115545-a95591f28bfc?w=400&auto=format&fit=crop&q=60',
+        category: 'Shakes',
       },
     ],
   },
@@ -219,32 +226,37 @@ const DUMMY_RESTAURANTS: Restaurant[] = [
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeRestaurant, setActiveRestaurant] = useState<Restaurant | null>(null);
   const [orders, setOrders] = useState<Order[]>([
     {
       id: 'ORD-9302',
-      restaurantName: 'Pizzeria Bella Vita',
-      restaurantImage: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80',
+      restaurantName: 'CTR Shri Sagar',
+      restaurantImage: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=600&auto=format&fit=crop&q=80',
       items: [
-        { id: 'food-2-2', name: 'Spicy Diavola Pizza', price: 16.49, quantity: 1 },
-        { id: 'food-2-3', name: 'Classic Garlic Knots', price: 6.99, quantity: 1 }
+        { id: 'food-2-1', name: 'CTR Benne Masala Dosa', price: 110, quantity: 2 },
+        { id: 'food-2-3', name: 'Traditional Filter Coffee', price: 45, quantity: 1 }
       ],
-      subtotal: 23.48,
-      tip: 3.00,
-      total: 28.97,
+      subtotal: 265,
+      tip: 30,
+      total: 334,
       status: 'DELIVERED',
       date: 'May 20, 2026',
     }
   ]);
 
   const [userProfile, setUserProfile] = useState({
-    name: 'Alex Mercer',
-    email: 'alex.mercer@gmail.com',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80',
-    level: 'Gold Foodie',
+    name: 'Arjun Sharma',
+    email: 'arjun.sharma@gmail.com',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+    level: 'Biryani Boss',
     points: 850,
-    balance: 42.50,
+    balance: 2450.00,
+    memberSince: 'Oct 2023',
+    favCuisine: 'South Indian & Biryani',
+    totalOrders: 142,
+    savedAddresses: 3,
   });
 
   // Automatically advance any active order status in background for high fidelity
@@ -328,11 +340,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveRestaurant(null);
   };
 
-  const placeOrder = (tipAmount: number) => {
+  const placeOrder = (tipAmount: number, discountAmount = 0) => {
     if (cart.length === 0 || !activeRestaurant) return null;
 
     const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-    const total = subtotal + activeRestaurant.deliveryFee + tipAmount;
+    const total = Math.max(0, subtotal + activeRestaurant.deliveryFee + tipAmount - discountAmount);
     
     const newOrder: Order = {
       id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -359,11 +371,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newOrder;
   };
 
-  const completeOnboarding = () => setIsOnboarded(true);
-  const login = () => setIsLoggedIn(true);
-  const logout = () => {
+  // Recover auth and onboarding states from AsyncStorage on mount
+  useEffect(() => {
+    const loadPersistedState = async () => {
+      try {
+        const storedOnboarded = await AsyncStorage.getItem('@onboarding_status');
+        const storedLoggedIn = await AsyncStorage.getItem('@login_status');
+        
+        if (storedOnboarded !== null) {
+          setIsOnboarded(storedOnboarded === 'true');
+        }
+        if (storedLoggedIn !== null) {
+          setIsLoggedIn(storedLoggedIn === 'true');
+        }
+      } catch (error) {
+        console.error('Failed to load persisted state from AsyncStorage:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPersistedState();
+  }, []);
+
+  const completeOnboarding = async () => {
+    try {
+      await AsyncStorage.setItem('@onboarding_status', 'true');
+    } catch (error) {
+      console.error('Failed to persist onboarding status:', error);
+    }
+    setIsOnboarded(true);
+  };
+
+  const login = async () => {
+    try {
+      await AsyncStorage.setItem('@login_status', 'true');
+    } catch (error) {
+      console.error('Failed to persist login status:', error);
+    }
+    setIsLoggedIn(true);
+  };
+
+  const logout = async () => {
+    try {
+      await AsyncStorage.removeItem('@login_status');
+      await AsyncStorage.removeItem('@onboarding_status');
+    } catch (error) {
+      console.error('Failed to clear persisted auth states:', error);
+    }
     setIsLoggedIn(false);
     setIsOnboarded(false); // Reset to allow full onboarding demo flow again!
+  };
+
+  const updateProfile = (name: string, email: string, favCuisine: string) => {
+    setUserProfile((prev) => ({
+      ...prev,
+      name,
+      email,
+      favCuisine,
+    }));
   };
 
   return (
@@ -375,6 +441,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         orders,
         isOnboarded,
         isLoggedIn,
+        isLoading,
         userProfile,
         addToCart,
         removeFromCart,
@@ -384,6 +451,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         completeOnboarding,
         login,
         logout,
+        updateProfile,
       }}>
       {children}
     </AppContext.Provider>

@@ -6,11 +6,11 @@ import {
   Image,
   TouchableOpacity,
   FlatList,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useApp, Order, OrderStatus } from '@/context/AppContext';
 import { useTheme } from '@/hooks/use-theme';
@@ -19,6 +19,7 @@ export default function OrdersScreen() {
   const { orders, addToCart, restaurants } = useApp();
   const theme = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
 
@@ -118,7 +119,7 @@ export default function OrdersScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
       {/* Navigation Headers */}
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: theme.text }]}>My Orders</Text>
@@ -166,7 +167,7 @@ export default function OrdersScreen() {
             </View>
             <Text style={[styles.emptyTitle, { color: theme.text }]}>No Active Feasts</Text>
             <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-              Place an order from Burger Bistro or Pizzeria Bella Vita to track its live delivery steps here!
+              Place an order from Meghana Biryani Palace or CTR Shri Sagar to track its live delivery steps here!
             </Text>
           </View>
         ) : (
@@ -199,7 +200,7 @@ export default function OrdersScreen() {
                         {cartItem.quantity}x <Text style={{ fontWeight: '500' }}>{cartItem.name}</Text>
                       </Text>
                       <Text style={[styles.itemPrice, { color: theme.text }]}>
-                        ${(cartItem.price * cartItem.quantity).toFixed(2)}
+                        ₹{(cartItem.price * cartItem.quantity)}
                       </Text>
                     </View>
                   ))}
@@ -211,7 +212,7 @@ export default function OrdersScreen() {
                 {/* Price Summary footer */}
                 <View style={[styles.cardFooter, { borderTopColor: theme.backgroundElement }]}>
                   <Text style={[styles.totalLabel, { color: theme.textSecondary }]}>Total Billing</Text>
-                  <Text style={[styles.totalAmount, { color: '#FF4B3A' }]}>${item.total.toFixed(2)}</Text>
+                  <Text style={[styles.totalAmount, { color: '#FF4B3A' }]}>₹{item.total.toFixed(0)}</Text>
                 </View>
               </Animated.View>
             )}
@@ -257,7 +258,7 @@ export default function OrdersScreen() {
                       {cartItem.quantity}x {cartItem.name}
                     </Text>
                     <Text style={[styles.itemPrice, { color: theme.textSecondary }]}>
-                      ${(cartItem.price * cartItem.quantity).toFixed(2)}
+                      ₹{(cartItem.price * cartItem.quantity)}
                     </Text>
                   </View>
                 ))}
@@ -267,7 +268,7 @@ export default function OrdersScreen() {
               <View style={[styles.cardFooter, { borderTopColor: theme.backgroundElement, paddingTop: 14 }]}>
                 <View>
                   <Text style={[styles.totalLabel, { color: theme.textSecondary }]}>Receipt Total</Text>
-                  <Text style={[styles.totalAmount, { color: theme.text }]}>${item.total.toFixed(2)}</Text>
+                  <Text style={[styles.totalAmount, { color: theme.text }]}>₹{item.total.toFixed(0)}</Text>
                 </View>
 
                 <TouchableOpacity
@@ -290,7 +291,6 @@ export default function OrdersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   header: {
     paddingHorizontal: 24,
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   orderCard: {
     borderRadius: 24,

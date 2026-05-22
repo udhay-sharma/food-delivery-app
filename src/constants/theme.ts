@@ -7,22 +7,57 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
-export const Colors = {
+export interface ThemeColors {
+  readonly background: string;
+  readonly card: string;
+  readonly text: string;
+  readonly textSecondary: string;
+  readonly primary: string;
+  readonly border: string;
+  readonly activeTab: string;
+  readonly inactiveTab: string;
+  readonly backgroundElement: string;
+  readonly backgroundSelected: string;
+  readonly shadowColor: string;
+  readonly error: string;
+  readonly success: string;
+}
+
+export const Colors: {
+  readonly light: ThemeColors;
+  readonly dark: ThemeColors;
+} = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    background: '#F8F9FA',
+    card: '#FFFFFF',
+    text: '#1C1C1E',
+    textSecondary: '#7C7C80',
+    primary: '#E03E2D',
+    border: '#EBEBEB',
+    activeTab: '#E03E2D',
+    inactiveTab: '#8E8E93',
+    backgroundElement: '#F2F2F7',
+    backgroundSelected: '#E5E5EA',
+    shadowColor: '#000000',
+    error: '#FF3B30',
+    success: '#34C759',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    background: '#0C0C0E',
+    card: '#161619',
+    text: '#FFFFFF',
+    textSecondary: '#A0A0A5',
+    primary: '#FF4B3A',
+    border: '#242426',
+    activeTab: '#FF4B3A',
+    inactiveTab: '#636366',
+    backgroundElement: '#1C1C1E',
+    backgroundSelected: '#2C2C2E',
+    shadowColor: '#000000',
+    error: '#FF453A',
+    success: '#30D158',
   },
-} as const;
+};
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInUp, Layout } from 'react-native-reanimated';
+import { useNavigation } from '@react-navigation/native';
 
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/hooks/use-theme';
@@ -35,6 +36,7 @@ const SLIDES = [
 export default function OnboardingScreen() {
   const { completeOnboarding } = useApp();
   const theme = useTheme();
+  const navigation = useNavigation<any>();
   const [currentIdx, setCurrentIdx] = useState(0);
 
   const handleNext = () => {
@@ -42,6 +44,7 @@ export default function OnboardingScreen() {
       setCurrentIdx(currentIdx + 1);
     } else {
       completeOnboarding();
+      navigation.replace('Login');
     }
   };
 
@@ -52,7 +55,13 @@ export default function OnboardingScreen() {
       {/* Header Skip button */}
       <View style={styles.header}>
         {currentIdx < SLIDES.length - 1 ? (
-          <TouchableOpacity onPress={completeOnboarding} activeOpacity={0.7}>
+          <TouchableOpacity 
+            onPress={() => {
+              completeOnboarding();
+              navigation.replace('Login');
+            }} 
+            activeOpacity={0.7}
+          >
             <Text style={[styles.skipText, { color: theme.textSecondary }]}>Skip</Text>
           </TouchableOpacity>
         ) : (
