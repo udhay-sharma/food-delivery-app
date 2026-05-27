@@ -1,5 +1,5 @@
 {
-  "name": "food-delivery-app",
+  "name": "quickeats",
   "main": "node_modules/expo/AppEntry.js",
   "version": "1.0.0",
   "scripts": {

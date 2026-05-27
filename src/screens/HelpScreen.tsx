@@ -23,7 +23,7 @@ const FAQS: FAQItem[] = [
     answer: 'Every order placed automatically converts your subtotal into loyalty points! Points can be reviewed in your Profile and spent on future discounts or complimentary desserts.',
   },
   {
-    question: 'What is the Antigravity delivery speed guarantee?',
+    question: 'What is the QuickEats delivery speed guarantee?',
     answer: 'We secure top-tier local drivers to deliver your meals hot and fresh. If your order exceeds the predicted delivery window by more than 15 minutes, please contact live support for an instant wallet credit.',
   },
   {
@@ -114,13 +114,13 @@ export default function HelpScreen() {
             <TouchableOpacity style={[styles.channelCard, { backgroundColor: theme.backgroundElement }]}>
               <Ionicons name="mail" size={24} color="#FF4B3A" />
               <Text style={[styles.channelLabel, { color: theme.text }]}>Email Support</Text>
-              <Text style={[styles.channelVal, { color: theme.textSecondary }]}>concierge@feast.com</Text>
+              <Text style={[styles.channelVal, { color: theme.textSecondary }]}>concierge@quickeats.com</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.channelCard, { backgroundColor: theme.backgroundElement }]}>
               <Ionicons name="call" size={24} color="#FF4B3A" />
               <Text style={[styles.channelLabel, { color: theme.text }]}>Call Hotlines</Text>
-              <Text style={[styles.channelVal, { color: theme.textSecondary }]}>+1 (800) FEAST-NOW</Text>
+              <Text style={[styles.channelVal, { color: theme.textSecondary }]}>+1 (800) QUICK-EATS</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>

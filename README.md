@@ -1,4 +1,4 @@
-# Antigravity Feast 🍕 (React Native Expo Food Delivery Application)
+# QuickEats 🍕 (React Native Expo Food Delivery Application)
 
 A gorgeous, premium, highly interactive food delivery mobile application built using **Expo SDK 55**, **React Navigation v7**, **React Native Reanimated**, and **AsyncStorage**.
 

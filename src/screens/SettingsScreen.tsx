@@ -173,7 +173,7 @@ export default function SettingsScreen() {
             
             <View style={styles.aboutDescBlock}>
               <Text style={[styles.aboutDescText, { color: theme.textSecondary }]}>
-                {"Foodie Feast is Bangalore's premium micro-delivery service bringing gourmet cuisines, crispy dosas, and authentic biryani hot to your doorstep. Designed beautifully for dynamic iOS & Android systems."}
+                {"QuickEats is Bangalore's premium micro-delivery service bringing gourmet cuisines, crispy dosas, and authentic biryani hot to your doorstep. Designed beautifully for dynamic iOS & Android systems."}
               </Text>
             </View>
           </View>

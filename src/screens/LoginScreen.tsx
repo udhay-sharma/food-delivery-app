@@ -48,7 +48,7 @@ export default function LoginScreen() {
             <Ionicons name="pizza" size={54} color="#FF4B3A" />
           </View>
           <Text style={[styles.brandName, { color: theme.text }]}>
-            Antigravity<Text style={{ color: '#FF4B3A' }}>Feast</Text>
+            Quick<Text style={{ color: '#FF4B3A' }}>Eats</Text>
           </Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             Delivering culinary excellence instantly

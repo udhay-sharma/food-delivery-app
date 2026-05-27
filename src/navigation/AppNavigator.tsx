@@ -35,7 +35,7 @@ export default function AppNavigator() {
         <Animated.View entering={FadeIn.duration(600)} style={{ alignItems: 'center' }}>
           <Ionicons name="pizza" size={80} color="#FFF" />
           <Text style={{ color: '#FFF', fontSize: 26, fontWeight: '800', marginTop: 16, letterSpacing: -0.5 }}>
-            Antigravity Feast
+            QuickEats
           </Text>
           <ActivityIndicator size="small" color="#FFF" style={{ marginTop: 24 }} />
         </Animated.View>
