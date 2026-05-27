@@ -6,11 +6,6 @@ This application implements a complete simulated e-commerce workflow with global
 
 ---
 
-## 🎨 TLDraw Canvas & visual Design Links
-* **Interactive Design & Architecture Canvas**: [TLDraw Workspace Architecture Canvas](https://tldraw.com/s/v2_c_zRj23eJ1pXhN-u5Z0iBwM)
-
----
-
 ## 📱 Navigation Structure & Architecture
 
 The application is structured around a centralized conditional routing engine to manage onboarding, login sessions, nested stacks, and drawer navigators cleanly without route clashes.
